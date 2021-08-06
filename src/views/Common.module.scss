@@ -1,0 +1,38 @@
+.flexHorizontal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fh {
+  @extend .flexHorizontal;
+}
+
+.myElCard {
+  .myElCardTitle {
+    @extend .flexHorizontal;
+    .myElCardLeft {
+      @extend .flexHorizontal;
+    }
+    .myElCardActions {
+      @extend .flexHorizontal;
+    }
+  }
+}
+.myElTable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.myElSelect{
+  display: flex;
+  align-items: flex-start;
+}
+:global{
+  .el-row{
+    margin-bottom: 10px;
+    &:last-child {
+      margin-bottom: 0px;
+    }
+  }
+}
