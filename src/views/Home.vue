@@ -123,7 +123,7 @@ export const useElDialog = ({
     },
   });
   return {
-    elDialogVisible,
+    toggleElDialogVisible,
     template,
   };
 };
@@ -178,7 +178,7 @@ export default {
   setup() {
     const card = useElCard();
     const pagination = useElPagination();
-    const dialog = useElDialog();
+    const dialog = useElDialog({ elDialogTitle: "新增" });
     const input = useElInput({ elInputPlaceholder: "请输入查询条件" });
     const searchButton = useElButton({
       elButtonText: "查询",
@@ -190,7 +190,7 @@ export default {
       elButtonText: "添加",
       elButtonType: ElButtonType.Primary,
       elButtonClick: () => {
-        console.log(123);
+        dialog.toggleElDialogVisible();
       },
     });
     const editButton = useElButton({
@@ -255,7 +255,11 @@ export default {
             </div>
           </card.template>
         </el-row>
-        <dialog.template />
+        <dialog.template>
+          <el-row>
+            
+          </el-row>
+        </dialog.template>
       </div>
     );
   },
