@@ -1,6 +1,7 @@
 <script>
 import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
-//import style from "./Common.module.scss";
+import style from "./Common.module.scss";
+import { List } from "linqts";
 
 const ElButtonType = {
   Text: "text",
@@ -51,54 +52,56 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
   };
 };
 
-// export const useElTable = ({
-//   data = [],
-//   columns = [],
-//   actionsColumns = [],
-//   loading = false,
-// } = {}) => {
-//   const elTableData = ref(data);
-//   const elActionsColumns = actionsColumns;
-//   const elColumns = columns;
-//   const elTableLoading = ref(loading);
-//   const onInitialElTableData = (event) => {
-//     elTableLoading.value = true;
-//     event({ elTableData });
-//     elTableLoading.value = false;
-//   };
-//   const template = defineComponent({
-//     setup() {
-//       return () => (
-//         <el-table
-//           data={elTableData.value}
-//           v-loading={elTableLoading.value}
-//           width="100%"
-//         >
-//           {elColumns.map((item) => {
-//             return item.render ? (
-//               item.render()
-//             ) : (
-//               <el-table-column
-//                 align="center"
-//                 key={item.prop}
-//                 prop={item.prop}
-//                 label={item.label}
-//               ></el-table-column>
-//             );
-//           })}
-//           {elActionsColumns.map((item) => item.render && item.render())}
-//         </el-table>
-//       );
-//     },
-//   });
-//   return {
-//     elTableLoading,
-//     elTableData,
-//     elColumns,
-//     onInitialElTableData,
-//     template,
-//   };
-// };
+export const useElTable = ({
+  data: elData = [],
+  columns = [],
+  actionsColumns = [],
+  loading: l = true,
+} = {}) => {
+  const data = ref(elData);
+  const elActionsColumns = actionsColumns;
+  const elColumns = columns;
+  const loading = ref(l);
+  const onInitialElTableData = (event) => {
+    loading.value = true;
+    event({ data });
+    loading.value = false;
+  };
+  const setTableData = ({ list }) => {
+    data.value = list;
+    loading.value = false;
+  };
+  const template = defineComponent({
+    setup() {
+      return () => {
+        return (
+          <el-table data={data.value} v-loading={loading.value} width="100%">
+            {elColumns.map((item) => {
+              return item.render ? (
+                item.render()
+              ) : (
+                <el-table-column
+                  align="center"
+                  key={item.prop}
+                  prop={item.prop}
+                  label={item.label}
+                ></el-table-column>
+              );
+            })}
+            {elActionsColumns.map((item) => item.render && item.render())}
+          </el-table>
+        );
+      };
+    },
+  });
+  return {
+    loading,
+    data,
+    setTableData,
+    onInitialElTableData,
+    template,
+  };
+};
 
 // export const useElDialog = ({ width = "80%", title = "" } = {}) => {
 //   const elDialogVisible = ref(false);
@@ -127,51 +130,70 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
 //   };
 // };
 
-// const useElCard = () => {
-//   const template = defineComponent({
-//     props: {
-//       title: String,
-//     },
-//     setup(props, ctx) {
-//       return () => (
-//         <el-card class={style.myElCard}>
-//           <template slot="header">
-//             <div class={style.myElCardTitle}>
-//               <div class={style.myElCardLeft}>
-//                 {ctx.slots.title ? ctx.slots.title() : props.title}
-//               </div>
-//               <div class={style.myElCardActions}>
-//                 {ctx.slots.actions && ctx.slots.actions()}
-//               </div>
-//             </div>
-//           </template>
-//           {ctx.slots.default && ctx.slots.default()}
-//         </el-card>
-//       );
-//     },
-//   });
-//   return {
-//     template,
-//   };
-// };
+const useElCard = () => {
+  const template = defineComponent({
+    props: {
+      title: String,
+    },
+    setup(props, ctx) {
+      return () => (
+        <el-card class={style.myElCard}>
+          <template slot="header">
+            <div class={style.myElCardTitle}>
+              <div class={style.myElCardLeft}>
+                {ctx.slots.title ? ctx.slots.title() : props.title}
+              </div>
+              <div class={style.myElCardActions}>
+                {ctx.slots.actions && ctx.slots.actions()}
+              </div>
+            </div>
+          </template>
+          {ctx.slots.default && ctx.slots.default()}
+        </el-card>
+      );
+    },
+  });
+  return {
+    template,
+  };
+};
 
-// const useElPagination = () => {
-//   const total = ref(0);
-//   const template = defineComponent({
-//     setup() {
-//       return () => (
-//         <el-pagination
-//           background
-//           layout="prev, pager, next"
-//           total={total.value}
-//         ></el-pagination>
-//       );
-//     },
-//   });
-//   return {
-//     template,
-//   };
-// };
+const useElPagination = ({ onCurrentPageChange: cChange = () => {} } = {}) => {
+  const total = ref(0);
+  const currentPage = ref(1);
+  const template = defineComponent({
+    setup() {
+      return () => (
+        <el-pagination
+          background
+          layout="prev, pager, next"
+          total={total.value}
+          on-current-change={currentChange}
+          currentPage={currentPage.value}
+          on={{
+            ["update:currentPage"]: (value) => {
+              currentPage.value = value;
+            },
+          }}
+        ></el-pagination>
+      );
+    },
+  });
+  const setTotal = ({ total: t = 1 } = {}) => {
+    total.value = t;
+  };
+  const getCurrentPage = () => {
+    return currentPage.value;
+  };
+  const currentChange = () => {
+    cChange(currentPage.value);
+  };
+  return {
+    setTotal,
+    getCurrentPage,
+    template,
+  };
+};
 
 const useElSelect = ({
   data: elSelectData = [],
@@ -229,21 +251,24 @@ const useMySearch = ({
   onButtonClick: btnClick = () => {},
 }) => {
   const components = [];
-  const onButtonClick = () => {
+  const getConditions = () => {
     let results = {};
     if (components.length > 0) {
       components.forEach((item) => {
         results[item.key] = item.component.getValue();
       });
     }
-    btnClick(results);
+    return results;
+  };
+  const onButtonClick = () => {
+    btnClick({ results: getConditions() });
   };
   const searchButton = useElButton({
     onClick: onButtonClick,
     text: buttonText,
   });
   const template = (
-    <el-form inline={true}>
+    <el-form inline={true} class={style.mySearch}>
       {conditions &&
         conditions.map((item) => {
           if (item.type == MySearchType.Input) {
@@ -277,6 +302,7 @@ const useMySearch = ({
     </el-form>
   );
   return {
+    getConditions,
     template: defineComponent({
       setup() {
         return () => template;
@@ -285,8 +311,118 @@ const useMySearch = ({
   };
 };
 
+const useMyTable = ({
+  columns = [],
+  currentPage: cPage = 1,
+  pageSize = 10,
+  onCurrentPageChange: cPageChange = () => {},
+} = {}) => {
+  let elCurrentPage = cPage;
+  const table = useElTable({
+    columns: columns,
+  });
+  const pagination = useElPagination({
+    onCurrentPageChange: (currentPage) => {
+      elCurrentPage = currentPage;
+      cPageChange(currentPage);
+    },
+  });
+  const initialData = (event) => {
+    table.loading.value = true;
+    event({
+      currentPage: elCurrentPage,
+      pageSize,
+      loading: table.loading,
+      setTableData: ({ list, total }) => {
+        table.setTableData({ list });
+        pagination.setTotal({ total });
+      },
+    });
+  };
+
+  const template = () => (
+    <div class={style.myTable}>
+      <table.template />
+      <pagination.template />
+    </div>
+  );
+
+  return {
+    initialData,
+    template: defineComponent({
+      setup() {
+        return () => h("div", {}, [template()]);
+      },
+    }),
+  };
+};
+
+const personList = new List([]);
+class PersonService {
+  constructor() {
+    for (let i = 0; i < 100; i++) {
+      personList.Add({
+        name: `name${i}`,
+        sex: i % 2 == 0 ? "女" : "男",
+        age: i.toString(),
+        address: `地址${i}`,
+      });
+    }
+  }
+  async getList({ conditions = {}, currentPage = 1, pageSize = 10 } = {}) {
+    return new Promise((resovle) => {
+      setTimeout(() => {
+        let list = personList;
+        Object.getOwnPropertyNames(conditions).forEach((item) => {
+          if (conditions[item] !== "") {
+            list = list.Where(
+              (condition) => condition[item].indexOf(conditions[item]) !== -1
+            );
+            console.log(list);
+          }
+        });
+        let pagelist = list.Skip((currentPage - 1) * pageSize).Take(pageSize);
+        resovle({
+          list: pagelist.ToArray(),
+          total: list.Count(),
+        });
+      }, 1000);
+    });
+  }
+}
+
 export default defineComponent({
   setup() {
+    const personService = new PersonService();
+    const card = useElCard();
+    const myTable = useMyTable({
+      columns: [
+        { label: "姓名", prop: "name" },
+        { label: "年龄", prop: "age" },
+        { label: "性别", prop: "sex" },
+        { label: "住址", prop: "address" },
+      ],
+      onCurrentPageChange: () => {
+        loadingData();
+      },
+    });
+    const actionButton = useElButton({
+      text: "添加",
+      onClick: () => {
+        console.log("123");
+      },
+    });
+    const loadingData = () => {
+      myTable.initialData(async ({ currentPage, pageSize, setTableData }) => {
+        console.log(currentPage, pageSize);
+        let { list, total } = await personService.getList({
+          conditions: mySearch.getConditions(),
+          currentPage,
+          pageSize,
+        });
+        setTableData({ list, total });
+      });
+    };
     const mySearch = useMySearch({
       conditions: [
         {
@@ -299,6 +435,12 @@ export default defineComponent({
           key: "age",
           label: "年龄",
           placeholder: "请输入年龄",
+          type: MySearchType.Input,
+        },
+        {
+          key: "sex",
+          label: "性别",
+          placeholder: "请输入性别",
           type: MySearchType.Select,
           data: [
             {
@@ -306,20 +448,14 @@ export default defineComponent({
               label: "全部",
             },
             {
-              value: "1",
+              value: "男",
               label: "男",
             },
             {
-              value: "0",
+              value: "女",
               label: "女",
             },
           ],
-        },
-        {
-          key: "sex",
-          label: "性别",
-          placeholder: "请输入性别",
-          type: MySearchType.Input,
         },
         {
           key: "address",
@@ -328,16 +464,25 @@ export default defineComponent({
           type: MySearchType.Input,
         },
       ],
-      onButtonClick: (results) => {
-        console.log(results);
+      onButtonClick: () => {
+        loadingData();
       },
     });
+
     onMounted(() => {
-      console.log(123);
+      loadingData();
     });
     return () => (
       <div>
-        <mySearch.template />
+        <card.template>
+          <template slot="title">
+            <mySearch.template />
+          </template>
+          <template slot="actions">
+            <actionButton.template />
+          </template>
+          <myTable.template />
+        </card.template>
       </div>
     );
   },
