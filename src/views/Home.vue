@@ -1,6 +1,6 @@
 <script>
-import { ref, defineComponent, onMounted } from "@vue/composition-api";
-import style from "./Common.module.scss";
+import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
+//import style from "./Common.module.scss";
 
 const ElButtonType = {
   Text: "text",
@@ -10,15 +10,15 @@ const ElButtonType = {
 };
 
 export const useElButton = ({
-  elButtonText = "",
-  elButtonType = ElButtonType.Primary,
-  elButtonClick = () => {},
+  text = "",
+  type = ElButtonType.Primary,
+  onClick = () => {},
 } = {}) => {
   const template = defineComponent({
     setup(props, ctx) {
       return () => (
-        <el-button on-click={elButtonClick} type={elButtonType}>
-          {ctx.slots.default ? ctx.slots.default() : elButtonText}
+        <el-button on-click={onClick} type={type}>
+          {ctx.slots.default ? ctx.slots.default() : text}
         </el-button>
       );
     },
@@ -28,240 +28,318 @@ export const useElButton = ({
   };
 };
 
-export const useElInput = ({
-  elInputValue: inputValue = "",
-  elInputPlaceholder: placeholder = "",
-} = {}) => {
-  const elInputValue = ref(inputValue);
+export const useElInput = ({ value = "", placeholder = "" } = {}) => {
+  const elInputValue = ref(value);
   const elInputPlaceholder = placeholder;
   const template = defineComponent({
     setup() {
       return () => (
         <el-input
-          value={elInputValue.value}
           placeholder={elInputPlaceholder}
+          value={elInputValue.value}
           on-input={(value) => (elInputValue.value = value)}
         ></el-input>
       );
     },
   });
+  const getValue = () => {
+    return elInputValue.value;
+  };
   return {
-    elInputValue,
+    getValue,
     template,
   };
 };
 
-export const useElTable = ({
-  tableData = [],
-  columns = [],
-  actionsColumns = [],
-  tableLoading = false,
+// export const useElTable = ({
+//   data = [],
+//   columns = [],
+//   actionsColumns = [],
+//   loading = false,
+// } = {}) => {
+//   const elTableData = ref(data);
+//   const elActionsColumns = actionsColumns;
+//   const elColumns = columns;
+//   const elTableLoading = ref(loading);
+//   const onInitialElTableData = (event) => {
+//     elTableLoading.value = true;
+//     event({ elTableData });
+//     elTableLoading.value = false;
+//   };
+//   const template = defineComponent({
+//     setup() {
+//       return () => (
+//         <el-table
+//           data={elTableData.value}
+//           v-loading={elTableLoading.value}
+//           width="100%"
+//         >
+//           {elColumns.map((item) => {
+//             return item.render ? (
+//               item.render()
+//             ) : (
+//               <el-table-column
+//                 align="center"
+//                 key={item.prop}
+//                 prop={item.prop}
+//                 label={item.label}
+//               ></el-table-column>
+//             );
+//           })}
+//           {elActionsColumns.map((item) => item.render && item.render())}
+//         </el-table>
+//       );
+//     },
+//   });
+//   return {
+//     elTableLoading,
+//     elTableData,
+//     elColumns,
+//     onInitialElTableData,
+//     template,
+//   };
+// };
+
+// export const useElDialog = ({ width = "80%", title = "" } = {}) => {
+//   const elDialogVisible = ref(false);
+//   const toggleElDialogVisible = () =>
+//     (elDialogVisible.value = !elDialogVisible.value);
+//   const template = defineComponent({
+//     setup(props, ctx) {
+//       return () =>
+//         h("div", {}, [
+//           <el-dialog
+//             title={title}
+//             on={{
+//               ["update:visible"]: () => toggleElDialogVisible(),
+//             }}
+//             visible={elDialogVisible.value}
+//             width={width}
+//           >
+//             {ctx.slots.default && ctx.slots.default()}
+//           </el-dialog>,
+//         ]);
+//     },
+//   });
+//   return {
+//     toggleElDialogVisible,
+//     template,
+//   };
+// };
+
+// const useElCard = () => {
+//   const template = defineComponent({
+//     props: {
+//       title: String,
+//     },
+//     setup(props, ctx) {
+//       return () => (
+//         <el-card class={style.myElCard}>
+//           <template slot="header">
+//             <div class={style.myElCardTitle}>
+//               <div class={style.myElCardLeft}>
+//                 {ctx.slots.title ? ctx.slots.title() : props.title}
+//               </div>
+//               <div class={style.myElCardActions}>
+//                 {ctx.slots.actions && ctx.slots.actions()}
+//               </div>
+//             </div>
+//           </template>
+//           {ctx.slots.default && ctx.slots.default()}
+//         </el-card>
+//       );
+//     },
+//   });
+//   return {
+//     template,
+//   };
+// };
+
+// const useElPagination = () => {
+//   const total = ref(0);
+//   const template = defineComponent({
+//     setup() {
+//       return () => (
+//         <el-pagination
+//           background
+//           layout="prev, pager, next"
+//           total={total.value}
+//         ></el-pagination>
+//       );
+//     },
+//   });
+//   return {
+//     template,
+//   };
+// };
+
+const useElSelect = ({
+  data: elSelectData = [],
+  value: elSelectValue = "",
+  placeholder = "请选择",
 } = {}) => {
-  const elTableData = ref(tableData);
-  const elColumns = columns;
-  const elTableLoading = ref(tableLoading);
-  const onInitialElTableData = (event) => {
-    elTableLoading.value = true;
-    event({ elTableData });
-    elTableLoading.value = false;
+  const data = ref(elSelectData);
+  const value = ref(elSelectValue);
+  const getValue = () => value.value;
+  const loading = ref(false);
+  const onInitialData = (event) => {
+    loading.value = true;
+    event({ data, value });
+    loading.value = false;
   };
+  const returnTemplate = () => (
+    <el-select
+      value={value.value}
+      on-input={(v) => (value.value = v)}
+      placeholder={placeholder}
+      loading={loading.value}
+    >
+      {data.value &&
+        data.value.map((item) => {
+          return (
+            <el-option
+              key={item.value}
+              label={item.label}
+              value={item.value}
+            ></el-option>
+          );
+        })}
+    </el-select>
+  );
   const template = defineComponent({
     setup() {
-      return () => (
-        <el-table
-          data={elTableData.value}
-          v-loading={elTableLoading.value}
-          width="100%"
-        >
-          {elColumns.map((item) => {
-            return item.render ? (
-              item.render()
-            ) : (
-              <el-table-column
-                align="center"
-                key={item.prop}
-                prop={item.prop}
-                label={item.label}
-              ></el-table-column>
+      return () => h("div", {}, [returnTemplate()]);
+    },
+  });
+  return {
+    getValue,
+    onInitialData,
+    template,
+  };
+};
+
+const MySearchType = {
+  Input: Symbol("Input"),
+  Select: Symbol("Select"),
+};
+
+const useMySearch = ({
+  conditions = [],
+  buttonText = "查询",
+  onButtonClick: btnClick = () => {},
+}) => {
+  const components = [];
+  const onButtonClick = () => {
+    let results = {};
+    if (components.length > 0) {
+      components.forEach((item) => {
+        results[item.key] = item.component.getValue();
+      });
+    }
+    btnClick(results);
+  };
+  const searchButton = useElButton({
+    onClick: onButtonClick,
+    text: buttonText,
+  });
+  const template = (
+    <el-form inline={true}>
+      {conditions &&
+        conditions.map((item) => {
+          if (item.type == MySearchType.Input) {
+            const input = useElInput({ placeholder: item.placeholder });
+            components.push({ key: item.key, component: input });
+            return (
+              <el-form-item label={item.label}>
+                <input.template />
+              </el-form-item>
             );
-          })}
-          {actionsColumns.map((item) => item.render && item.render())}
-        </el-table>
-      );
-    },
-  });
+          } else if (item.type == MySearchType.Select) {
+            const select = useElSelect({
+              placeholder: item.placeholder,
+              data: item.data,
+            });
+            components.push({ key: item.key, component: select });
+            return (
+              <el-form-item label={item.label}>
+                <select.template />
+              </el-form-item>
+            );
+          } else {
+            return (
+              <el-form-item>
+                <searchButton.template />
+              </el-form-item>
+            );
+          }
+        })}
+      <searchButton.template />
+    </el-form>
+  );
   return {
-    elTableLoading,
-    elTableData,
-    elColumns,
-    onInitialElTableData,
-    template,
+    template: defineComponent({
+      setup() {
+        return () => template;
+      },
+    }),
   };
 };
 
-export const useElDialog = ({
-  elDialogWitdh = "80%",
-  elDialogTitle = "",
-} = {}) => {
-  const elDialogVisible = ref(false);
-  const toggleElDialogVisible = () =>
-    (elDialogVisible.value = !elDialogVisible.value);
-  const template = defineComponent({
-    setup(props, ctx) {
-      return () => (
-        <el-dialog
-          title={elDialogTitle}
-          on={{
-            ["update:visible"]: () => toggleElDialogVisible(),
-          }}
-          visible={elDialogVisible.value}
-          width={elDialogWitdh}
-        >
-          {ctx.slots.default && ctx.slots.default()}
-        </el-dialog>
-      );
-    },
-  });
-  return {
-    toggleElDialogVisible,
-    template,
-  };
-};
-
-const useElCard = () => {
-  const template = defineComponent({
-    props: {
-      title: String,
-    },
-    setup(props, ctx) {
-      return () => (
-        <el-card class={style.myElCard}>
-          <template slot="header">
-            <div class={style.myElCardTitle}>
-              <div class={style.myElCardLeft}>
-                {ctx.slots.title ? ctx.slots.title() : props.title}
-              </div>
-              <div class={style.myElCardActions}>
-                {ctx.slots.actions && ctx.slots.actions()}
-              </div>
-            </div>
-          </template>
-          {ctx.slots.default && ctx.slots.default()}
-        </el-card>
-      );
-    },
-  });
-  return {
-    template,
-  };
-};
-
-const useElPagination = () => {
-  const total = ref(0);
-  const template = defineComponent({
-    setup() {
-      return () => (
-        <el-pagination
-          background
-          layout="prev, pager, next"
-          total={total.value}
-        ></el-pagination>
-      );
-    },
-  });
-  return {
-    template,
-  };
-};
-
-export default {
+export default defineComponent({
   setup() {
-    const card = useElCard();
-    const pagination = useElPagination();
-    const dialog = useElDialog({ elDialogTitle: "新增" });
-    const input = useElInput({ elInputPlaceholder: "请输入查询条件" });
-    const searchButton = useElButton({
-      elButtonText: "查询",
-      elButtonClick: () => {
-        console.log(input.elInputValue.value);
-      },
-    });
-    const addButton = useElButton({
-      elButtonText: "添加",
-      elButtonType: ElButtonType.Primary,
-      elButtonClick: () => {
-        dialog.toggleElDialogVisible();
-      },
-    });
-    const editButton = useElButton({
-      elButtonText: "修改",
-      elButtonType: ElButtonType.Info,
-      elButtonClick: () => {
-        console.log(123);
-      },
-    });
-    const table = useElTable({
-      columns: [
-        { label: "todo item", prop: "item" },
-        { label: "datetime", prop: "datetime" },
-        { label: "isFinished", prop: "isFinished" },
-      ],
-      actionsColumns: [
+    const mySearch = useMySearch({
+      conditions: [
         {
-          render: () => (
-            <el-table-column
-              align="center"
-              label="操作"
-              formatter={() => (
-                <div>
-                  <editButton.template />
-                  <el-button type="danger">删除</el-button>
-                </div>
-              )}
-            ></el-table-column>
-          ),
+          key: "name",
+          label: "姓名",
+          placeholder: "请输入姓名",
+          type: MySearchType.Input,
+        },
+        {
+          key: "age",
+          label: "年龄",
+          placeholder: "请输入年龄",
+          type: MySearchType.Select,
+          data: [
+            {
+              value: "",
+              label: "全部",
+            },
+            {
+              value: "1",
+              label: "男",
+            },
+            {
+              value: "0",
+              label: "女",
+            },
+          ],
+        },
+        {
+          key: "sex",
+          label: "性别",
+          placeholder: "请输入性别",
+          type: MySearchType.Input,
+        },
+        {
+          key: "address",
+          label: "地址",
+          placeholder: "请输入地址",
+          type: MySearchType.Input,
         },
       ],
+      onButtonClick: (results) => {
+        console.log(results);
+      },
     });
     onMounted(() => {
-      table.onInitialElTableData(({ elTableData }) => {
-        elTableData.value = [
-          { item: "todo1", datetime: "2019-01-01", isFinished: false },
-        ];
-      });
+      console.log(123);
     });
     return () => (
       <div>
-        <el-row>
-          <card.template>
-            <template slot="title">请选择</template>
-            <div class={style.myElSelect}>
-              <el-button>亲亲</el-button>
-            </div>
-          </card.template>
-        </el-row>
-        <el-row>
-          <card.template>
-            <template slot="title">
-              <input.template />
-              <searchButton.template />
-            </template>
-            <template slot="actions">
-              <addButton.template />
-            </template>
-            <div class={style.myElTable}>
-              <table.template />
-              <pagination.template />
-            </div>
-          </card.template>
-        </el-row>
-        <dialog.template>
-          <el-row>
-            
-          </el-row>
-        </dialog.template>
+        <mySearch.template />
       </div>
     );
   },
-};
+});
 </script>
