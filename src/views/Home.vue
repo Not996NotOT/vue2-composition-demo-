@@ -38,7 +38,9 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
         <el-input
           placeholder={elInputPlaceholder}
           value={elInputValue.value}
-          on-input={(value) => (elInputValue.value = value)}
+          on-input={(value) => {
+            elInputValue.value = value;
+          }}
         ></el-input>
       );
     },
@@ -215,6 +217,7 @@ const useElSelect = ({
       on-input={(v) => (value.value = v)}
       placeholder={placeholder}
       loading={loading.value}
+      class={style.myElSelect}
     >
       {data.value &&
         data.value.map((item) => {
@@ -293,7 +296,7 @@ const useMySearch = ({
           } else {
             return (
               <el-form-item>
-                <searchButton.template />
+                <div>{item.key}</div>
               </el-form-item>
             );
           }
@@ -357,74 +360,84 @@ const useMyTable = ({
   };
 };
 
-const FormItemType = {
+const MyFormItemType = {
   Input: Symbol("Input"),
   Select: Symbol("Select"),
   TextArea: Symbol("TextArea"),
 };
 
-const useForm = ({
+const useMyForm = ({
   formItems = [],
-  okButtonText = "保存",
+  labelWidth = "80px",
+  okButtonText = "确定",
   okButtonClick = () => {},
   cancelButtonText = "取消",
   cancelButtonClick = () => {},
 } = {}) => {
-  const saveButton = useElButton({
-    text: okButtonText,
-    type: ElButtonType.Primary,
-    onClick: okButtonClick,
-  });
-  const cancelButton = useElButton({
-    text: cancelButtonText,
-    type: ElButtonType.Info,
-    onClick: cancelButtonClick,
-  });
   const components = [];
   const getFormData = () => {
-    let formData = {};
+    let results = {};
     if (components.length > 0) {
       components.forEach((item) => {
-        formData[item.key] = item.component.getValue();
+        results[item.key] = item.component.getValue();
       });
     }
-    return getFormData();
+    return results;
   };
-  const returnTemplate = () => (
-    <el-form>
-      {formItems.length > 0 &&
+  const okButton = useElButton({
+    type: ElButtonType.Primary,
+    text: okButtonText,
+    onClick: () => {
+      okButtonClick({ formData: getFormData() });
+    },
+  });
+  const cancelButton = useElButton({
+    type: ElButtonType.Info,
+    text: cancelButtonText,
+    onClick: cancelButtonClick,
+  });
+  const template = (
+    <el-form label-width={labelWidth}>
+      {formItems &&
         formItems.map((item) => {
-          const { type, placeholder, label, key, data } = item;
-          let formTemplate;
-          switch (type) {
-            case FormItemType.Input: {
-              const input = useElInput({ placeholder });
-              components.push({ key, component: input });
-              formTemplate = <input.template />;
-              break;
-            }
-            case FormItemType.Select: {
-              const select = useElSelect({ placeholder, data });
-              components.push({ key, component: select });
-              formTemplate = <select.template />;
-            }
-            default:
-              formTemplate = <div>{key}</div>;
-              break;
+          if (item.type == MyFormItemType.Input) {
+            const input = useElInput({ placeholder: item.placeholder });
+            components.push({ key: item.key, component: input });
+            return (
+              <el-form-item label={item.label}>
+                <input.template />
+              </el-form-item>
+            );
+          } else if (item.type == MyFormItemType.Select) {
+            const select = useElSelect({
+              placeholder: item.placeholder,
+              data: item.data,
+            });
+            components.push({ key: item.key, component: select });
+            return (
+              <el-form-item label={item.label}>
+                <select.template />
+              </el-form-item>
+            );
+          } else {
+            return (
+              <el-form-item>
+                <div>{item.key}</div>
+              </el-form-item>
+            );
           }
-          return <el-form-item label={label}>{formTemplate}</el-form-item>;
         })}
       <el-form-item>
-        <saveButton.template />
+        <okButton.template />
         <cancelButton.template />
       </el-form-item>
     </el-form>
   );
-
   return {
+    getFormData,
     template: defineComponent({
       setup() {
-        return () => h("div", {}, [returnTemplate()]);
+        return () => template;
       },
     }),
   };
@@ -466,7 +479,7 @@ class PersonService {
 
 export default defineComponent({
   setup() {
-    const dialog = useElDialog({ title: "表单" });
+    const dialog = useElDialog({ title: "表单", width: "50%" });
     const personService = new PersonService();
     const card = useElCard();
     const myTable = useMyTable({
@@ -488,7 +501,6 @@ export default defineComponent({
     });
     const loadingData = () => {
       myTable.initialData(async ({ currentPage, pageSize, setTableData }) => {
-        console.log(currentPage, pageSize);
         let { list, total } = await personService.getList({
           conditions: mySearch.getConditions(),
           currentPage,
@@ -542,9 +554,57 @@ export default defineComponent({
         loadingData();
       },
     });
-
+    const myForm = useMyForm({
+      formItems: [
+        {
+          key: "name",
+          label: "姓名",
+          placeholder: "请输入姓名",
+          type: MyFormItemType.Input,
+        },
+        {
+          key: "age",
+          label: "年龄",
+          placeholder: "请输入年龄",
+          type: MyFormItemType.Input,
+        },
+        {
+          key: "sex",
+          label: "性别",
+          placeholder: "请输入性别",
+          type: MyFormItemType.Select,
+          data: [
+            {
+              value: "",
+              label: "全部",
+            },
+            {
+              value: "男",
+              label: "男",
+            },
+            {
+              value: "女",
+              label: "女",
+            },
+          ],
+        },
+        {
+          key: "address",
+          label: "地址",
+          placeholder: "请输入地址",
+          type: MyFormItemType.Input,
+        },
+      ],
+      okButtonClick: ({ formData }) => {
+        console.log(formData);
+      },
+      cancelButtonClick: () => {
+        dialog.toggleElDialogVisible();
+      },
+    });
     onMounted(() => {
-      console.log(useForm);
+      console.log(useMyForm);
+      console.log(myForm);
       loadingData();
     });
     return () => (
@@ -558,7 +618,9 @@ export default defineComponent({
           </template>
           <myTable.template />
         </card.template>
-        <dialog.template></dialog.template>
+        <dialog.template>
+          <myForm.template />
+        </dialog.template>
       </div>
     );
   },
