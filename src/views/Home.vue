@@ -103,32 +103,32 @@ export const useElTable = ({
   };
 };
 
-// export const useElDialog = ({ width = "80%", title = "" } = {}) => {
-//   const elDialogVisible = ref(false);
-//   const toggleElDialogVisible = () =>
-//     (elDialogVisible.value = !elDialogVisible.value);
-//   const template = defineComponent({
-//     setup(props, ctx) {
-//       return () =>
-//         h("div", {}, [
-//           <el-dialog
-//             title={title}
-//             on={{
-//               ["update:visible"]: () => toggleElDialogVisible(),
-//             }}
-//             visible={elDialogVisible.value}
-//             width={width}
-//           >
-//             {ctx.slots.default && ctx.slots.default()}
-//           </el-dialog>,
-//         ]);
-//     },
-//   });
-//   return {
-//     toggleElDialogVisible,
-//     template,
-//   };
-// };
+export const useElDialog = ({ width = "80%", title = "" } = {}) => {
+  const elDialogVisible = ref(false);
+  const toggleElDialogVisible = () =>
+    (elDialogVisible.value = !elDialogVisible.value);
+  const template = defineComponent({
+    setup(props, ctx) {
+      return () =>
+        h("div", {}, [
+          <el-dialog
+            title={title}
+            on={{
+              ["update:visible"]: () => toggleElDialogVisible(),
+            }}
+            visible={elDialogVisible.value}
+            width={width}
+          >
+            {ctx.slots.default && ctx.slots.default()}
+          </el-dialog>,
+        ]);
+    },
+  });
+  return {
+    toggleElDialogVisible,
+    template,
+  };
+};
 
 const useElCard = () => {
   const template = defineComponent({
@@ -357,6 +357,79 @@ const useMyTable = ({
   };
 };
 
+const FormItemType = {
+  Input: Symbol("Input"),
+  Select: Symbol("Select"),
+  TextArea: Symbol("TextArea"),
+};
+
+const useForm = ({
+  formItems = [],
+  okButtonText = "保存",
+  okButtonClick = () => {},
+  cancelButtonText = "取消",
+  cancelButtonClick = () => {},
+} = {}) => {
+  const saveButton = useElButton({
+    text: okButtonText,
+    type: ElButtonType.Primary,
+    onClick: okButtonClick,
+  });
+  const cancelButton = useElButton({
+    text: cancelButtonText,
+    type: ElButtonType.Info,
+    onClick: cancelButtonClick,
+  });
+  const components = [];
+  const getFormData = () => {
+    let formData = {};
+    if (components.length > 0) {
+      components.forEach((item) => {
+        formData[item.key] = item.component.getValue();
+      });
+    }
+    return getFormData();
+  };
+  const returnTemplate = () => (
+    <el-form>
+      {formItems.length > 0 &&
+        formItems.map((item) => {
+          const { type, placeholder, label, key, data } = item;
+          let formTemplate;
+          switch (type) {
+            case FormItemType.Input: {
+              const input = useElInput({ placeholder });
+              components.push({ key, component: input });
+              formTemplate = <input.template />;
+              break;
+            }
+            case FormItemType.Select: {
+              const select = useElSelect({ placeholder, data });
+              components.push({ key, component: select });
+              formTemplate = <select.template />;
+            }
+            default:
+              formTemplate = <div>{key}</div>;
+              break;
+          }
+          return <el-form-item label={label}>{formTemplate}</el-form-item>;
+        })}
+      <el-form-item>
+        <saveButton.template />
+        <cancelButton.template />
+      </el-form-item>
+    </el-form>
+  );
+
+  return {
+    template: defineComponent({
+      setup() {
+        return () => h("div", {}, [returnTemplate()]);
+      },
+    }),
+  };
+};
+
 const personList = new List([]);
 class PersonService {
   constructor() {
@@ -393,6 +466,7 @@ class PersonService {
 
 export default defineComponent({
   setup() {
+    const dialog = useElDialog({ title: "表单" });
     const personService = new PersonService();
     const card = useElCard();
     const myTable = useMyTable({
@@ -409,7 +483,7 @@ export default defineComponent({
     const actionButton = useElButton({
       text: "添加",
       onClick: () => {
-        console.log("123");
+        dialog.toggleElDialogVisible();
       },
     });
     const loadingData = () => {
@@ -470,6 +544,7 @@ export default defineComponent({
     });
 
     onMounted(() => {
+      console.log(useForm);
       loadingData();
     });
     return () => (
@@ -483,6 +558,7 @@ export default defineComponent({
           </template>
           <myTable.template />
         </card.template>
+        <dialog.template></dialog.template>
       </div>
     );
   },
