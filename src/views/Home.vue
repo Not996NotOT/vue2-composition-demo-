@@ -1,5 +1,11 @@
 <script>
-import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
+import {
+  h,
+  ref,
+  defineComponent,
+  onMounted,
+  watchEffect,
+} from "@vue/composition-api";
 import style from "./Common.module.scss";
 import { List } from "linqts";
 import { Message, MessageBox, Notification } from "element-ui";
@@ -91,6 +97,11 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
     props: ["validators"],
     setup(props) {
       let validators = props.validators;
+      watchEffect(() => {
+        if (validators && validators.required) {
+          isRequire.value = !elInputValue.value;
+        }
+      });
       return () => (
         <div class={style.formContainer}>
           <el-input
@@ -98,14 +109,6 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
             value={elInputValue.value}
             on-input={(value) => {
               elInputValue.value = value;
-            }}
-            on-blur={() => {
-              if (validators && validators.required) {
-                console.log(validators.required);
-                elInputValue.value == ""
-                  ? (isRequire.value = true)
-                  : (isRequire.value = false);
-              }
             }}
             class={isRequire.value ? style.formValidator : ""}
           ></el-input>
@@ -138,6 +141,7 @@ export const useElTable = ({
   const data = ref(elData);
   const elActionsColumns = actionsColumns;
   const elColumns = columns;
+  console.log("tableColumns", columns);
   const loading = ref(l);
   const onInitialElTableData = (event) => {
     loading.value = true;
@@ -154,6 +158,7 @@ export const useElTable = ({
         return (
           <el-table data={data.value} v-loading={loading.value} width="100%">
             {elColumns.map((item) => {
+              console.log(item.render);
               return item.render ? (
                 item.render()
               ) : (
@@ -566,6 +571,7 @@ class PersonService {
   constructor() {
     for (let i = 0; i < 100; i++) {
       personList.Add({
+        id: i,
         name: `name${i}`,
         sex: i % 2 == 0 ? "女" : "男",
         age: i.toString(),
@@ -616,6 +622,16 @@ export default defineComponent({
     const card = useElCard();
     const myTable = useMyTable({
       columns: [
+        {
+          render: () => (
+            <el-table-column
+              align="center"
+              key="id"
+              prop="id"
+              label="id"
+            ></el-table-column>
+          ),
+        },
         { label: "姓名", prop: "name" },
         { label: "年龄", prop: "age" },
         { label: "性别", prop: "sex" },
@@ -717,7 +733,7 @@ export default defineComponent({
           type: MyFormItemType.Input,
           validators: {
             required: true,
-            message: "请输入活动名称",
+            message: "请输入姓名",
           },
         },
         {
@@ -761,8 +777,6 @@ export default defineComponent({
       },
     });
     onMounted(() => {
-      console.log(useMyForm);
-      console.log(myForm);
       loadingData();
     });
     return () => (
