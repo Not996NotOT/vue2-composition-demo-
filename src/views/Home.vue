@@ -1,11 +1,5 @@
 <script>
-import {
-  h,
-  ref,
-  defineComponent,
-  onMounted,
-  watchEffect,
-} from "@vue/composition-api";
+import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
 import style from "./Common.module.scss";
 import { List } from "linqts";
 import { Message, MessageBox, Notification } from "element-ui";
@@ -53,7 +47,6 @@ class MyMessage {
   }
 
   static notify(message, title = "提示", duration = "0") {
-    console.log("GlobalVue.$notify");
     Notification({
       title,
       message,
@@ -97,11 +90,11 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
     props: ["validators"],
     setup(props) {
       let validators = props.validators;
-      watchEffect(() => {
+      const validatorInput = () => {
         if (validators && validators.required) {
           isRequire.value = !elInputValue.value;
         }
-      });
+      };
       return () => (
         <div class={style.formContainer}>
           <el-input
@@ -109,7 +102,9 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
             value={elInputValue.value}
             on-input={(value) => {
               elInputValue.value = value;
+              validatorInput();
             }}
+            on-blur={() => validatorInput()}
             class={isRequire.value ? style.formValidator : ""}
           ></el-input>
           <div class={style.formErrorMessage}>
@@ -125,7 +120,9 @@ export const useElInput = ({ value = "", placeholder = "" } = {}) => {
   const setValue = (value) => {
     elInputValue.value = value;
   };
+  const resetValidator = () => (isRequire.value = false);
   return {
+    resetValidator,
     getValue,
     setValue,
     template,
@@ -307,6 +304,7 @@ const useElSelect = ({
   const getValue = () => value.value;
   const setValue = (v) => (value.value = v);
   const loading = ref(false);
+  const isRequire = ref(false);
   const onInitialData = (event) => {
     loading.value = true;
     event({ data, value });
@@ -332,12 +330,14 @@ const useElSelect = ({
         })}
     </el-select>
   );
+  const resetValidator = () => (isRequire.value = false);
   const template = defineComponent({
     setup() {
       return () => h("div", {}, [returnTemplate()]);
     },
   });
   return {
+    resetValidator,
     setValue,
     getValue,
     onInitialData,
@@ -446,6 +446,7 @@ const useMyTable = ({
       },
     });
   };
+  const toggleTableLoading = () => (table.loading.value = !table.loading.value);
 
   const template = () => (
     <div class={style.myTable}>
@@ -455,6 +456,7 @@ const useMyTable = ({
   );
 
   return {
+    toggleTableLoading,
     initialData,
     template: defineComponent({
       setup() {
@@ -479,6 +481,7 @@ const useMyForm = ({
   cancelButtonText = "取消",
   cancelButtonClick = () => {},
 } = {}) => {
+  let formId = undefined;
   const components = [];
   const getFormData = () => {
     let results = {};
@@ -487,9 +490,14 @@ const useMyForm = ({
         results[item.key] = item.component.getValue();
       });
     }
+    if (formId !== undefined) {
+      results.id = formId;
+    }
     return results;
   };
-  const initialFormData = (data) => {
+  const initialFormData = ({ id, data }) => {
+    formId = id;
+    console.log(formId);
     if (data) {
       components.forEach((item) => {
         item.component.setValue(data[item.key]);
@@ -508,6 +516,12 @@ const useMyForm = ({
     text: cancelButtonText,
     onClick: cancelButtonClick,
   });
+  const clearFormData = () => {
+    components.forEach((item) => {
+      item.component.setValue("");
+      item.component.resetValidator();
+    });
+  };
   const template = (
     <div class={style.myForm}>
       <el-form label-width={labelWidth}>
@@ -542,7 +556,7 @@ const useMyForm = ({
               );
             } else {
               return (
-                <div>
+                <div style={{ display: "none" }}>
                   <div>{item.key}</div>
                 </div>
               );
@@ -556,6 +570,7 @@ const useMyForm = ({
     </div>
   );
   return {
+    clearFormData,
     initialFormData,
     getFormData,
     template: defineComponent({
@@ -596,6 +611,29 @@ class PersonService {
           list: pagelist.ToArray(),
           total: list.Count(),
         });
+      }, 1000);
+    });
+  }
+  async removeById({ id }) {
+    return new Promise((resovle) => {
+      setTimeout(() => {
+        let entity = personList.Where((item) => item.id == id).FirstOrDefault();
+        resovle(personList.Remove(entity));
+      }, 1000);
+    });
+  }
+  async update({ data }) {
+    return new Promise((resovle) => {
+      setTimeout(() => {
+        let entity = personList
+          .Where((item) => item.id == data.id)
+          .FirstOrDefault();
+        if (data) {
+          Object.getOwnPropertyNames(data).forEach((item) => {
+            entity[item] = data[item];
+          });
+        }
+        resovle(true);
       }, 1000);
     });
   }
@@ -644,13 +682,28 @@ export default defineComponent({
               <div>
                 <editButton.template
                   click={() => {
-                    myForm.initialFormData(scope.row);
+                    myForm.initialFormData({
+                      id: scope.row.id,
+                      data: scope.row,
+                    });
                     dialog.toggleElDialogVisible();
                   }}
                 />
                 <deleteButton.template
                   click={() => {
-                    MyMessage.confirm("确认删除这条数据么", () => {});
+                    MyMessage.confirm("确认删除这条数据么", async () => {
+                      myTable.toggleTableLoading();
+                      if (
+                        await personService.removeById({ id: scope.row.id })
+                      ) {
+                        myTable.toggleTableLoading();
+                        loadingData();
+                        MyMessage.showMessage(
+                          "删除成功",
+                          MyMessageEnum.Success
+                        );
+                      }
+                    });
                   }}
                 />
               </div>
@@ -662,9 +715,78 @@ export default defineComponent({
         loadingData();
       },
     });
+    const myForm = useMyForm({
+      okButtonText: "保存",
+      splitColumnsCount: 2,
+      formItems: [
+        {
+          key: "id",
+          label: "id",
+          hidden: true,
+        },
+        {
+          key: "name",
+          label: "姓名",
+          placeholder: "请输入姓名",
+          type: MyFormItemType.Input,
+          validators: {
+            required: true,
+            message: "请输入姓名",
+          },
+        },
+        {
+          key: "age",
+          label: "年龄",
+          placeholder: "请输入年龄",
+          type: MyFormItemType.Input,
+        },
+        {
+          key: "sex",
+          label: "性别",
+          placeholder: "请输入性别",
+          type: MyFormItemType.Select,
+          data: [
+            {
+              value: "",
+              label: "全部",
+            },
+            {
+              value: "男",
+              label: "男",
+            },
+            {
+              value: "女",
+              label: "女",
+            },
+          ],
+        },
+        {
+          key: "address",
+          label: "地址",
+          placeholder: "请输入地址",
+          type: MyFormItemType.Input,
+        },
+      ],
+      okButtonClick: ({ formData }) => {
+        if (formData.id !== undefined) {
+          MyMessage.confirm("确认更新这条数据么？", async () => {
+            dialog.toggleElDialogVisible();
+            myTable.toggleTableLoading();
+            if (await personService.update({ data: formData })) {
+              MyMessage.showMessage("更新成功", MyMessageEnum.Success);
+              myTable.toggleTableLoading();
+            }
+          });
+        }
+      },
+      cancelButtonClick: () => {
+        dialog.toggleElDialogVisible();
+      },
+    });
     const actionButton = useElButton({
       text: "添加",
       onClick: () => {
+        myForm.clearFormData();
         dialog.toggleElDialogVisible();
       },
     });
@@ -723,59 +845,7 @@ export default defineComponent({
         loadingData();
       },
     });
-    const myForm = useMyForm({
-      splitColumnsCount: 2,
-      formItems: [
-        {
-          key: "name",
-          label: "姓名",
-          placeholder: "请输入姓名",
-          type: MyFormItemType.Input,
-          validators: {
-            required: true,
-            message: "请输入姓名",
-          },
-        },
-        {
-          key: "age",
-          label: "年龄",
-          placeholder: "请输入年龄",
-          type: MyFormItemType.Input,
-        },
-        {
-          key: "sex",
-          label: "性别",
-          placeholder: "请输入性别",
-          type: MyFormItemType.Select,
-          data: [
-            {
-              value: "",
-              label: "全部",
-            },
-            {
-              value: "男",
-              label: "男",
-            },
-            {
-              value: "女",
-              label: "女",
-            },
-          ],
-        },
-        {
-          key: "address",
-          label: "地址",
-          placeholder: "请输入地址",
-          type: MyFormItemType.Input,
-        },
-      ],
-      okButtonClick: ({ formData }) => {
-        console.log(formData);
-      },
-      cancelButtonClick: () => {
-        dialog.toggleElDialogVisible();
-      },
-    });
+
     onMounted(() => {
       loadingData();
     });
