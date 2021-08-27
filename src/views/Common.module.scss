@@ -8,6 +8,25 @@
   @extend .flexHorizontal;
 }
 
+.elPagination {
+  padding: 10px 0px;
+}
+
+.formContainer {
+  position: relative;
+  .formValidator {
+    > :global(.el-input__inner) {
+      border: 1px solid red;
+    }
+  }
+  .formErrorMessage {
+    line-height: 22px;
+    font-size: 12px;
+    color: red;
+    position: absolute;
+  }
+}
+
 .myElCard {
   .myElCardTitle {
     @extend .flexHorizontal;
@@ -43,6 +62,30 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
+}
+
+.myForm {
+  :global {
+    .el-form {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .el-form-item__label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0px;
+    }
+    .el-form-item {
+    }
+  }
+  .myFormButtons {
+    margin-top: 10px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 :global {

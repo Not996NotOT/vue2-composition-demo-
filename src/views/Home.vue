@@ -2,6 +2,59 @@
 import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
 import style from "./Common.module.scss";
 import { List } from "linqts";
+import { Message, MessageBox, Notification } from "element-ui";
+
+const MyMessageEnum = {
+  Error: "error",
+  Warning: "warning",
+  Success: "success",
+};
+
+class MyMessage {
+  /**
+   * 弹出消息
+   * @param {string} message 消息
+   * @param {MyMessageEnum} MyMessageEnum
+   */
+  static showMessage(message, myMessageEnum = MyMessageEnum.Error) {
+    Message({ message, type: myMessageEnum });
+  }
+
+  /**
+   * 确认框
+   * @param {string} message 消息
+   * @param {string} okEvent 成功回调事件
+   * @param {MyMessageEnum} myMessageEnum
+   * @param {string} title 标题
+   * @param {string} confirmButtonText 确定显示文字
+   * @param {string} cancelButtonText 取消显示文字
+   */
+  static confirm(
+    message,
+    okEvent,
+    myMessageEnum = MyMessageEnum.Warning,
+    title = "提示",
+    confirmButtonText = "确定",
+    cancelButtonText = "取消"
+  ) {
+    MessageBox.confirm(message, title, {
+      confirmButtonText,
+      cancelButtonText,
+      type: myMessageEnum,
+    })
+      .then(okEvent)
+      .catch(() => {});
+  }
+
+  static notify(message, title = "提示", duration = "0") {
+    console.log("GlobalVue.$notify");
+    Notification({
+      title,
+      message,
+      duration,
+    });
+  }
+}
 
 const ElButtonType = {
   Text: "text",
@@ -16,9 +69,10 @@ export const useElButton = ({
   onClick = () => {},
 } = {}) => {
   const template = defineComponent({
+    props: ["click"],
     setup(props, ctx) {
       return () => (
-        <el-button on-click={onClick} type={type}>
+        <el-button on-click={props.click ? props.click : onClick} type={type}>
           {ctx.slots.default ? ctx.slots.default() : text}
         </el-button>
       );
@@ -32,24 +86,45 @@ export const useElButton = ({
 export const useElInput = ({ value = "", placeholder = "" } = {}) => {
   const elInputValue = ref(value);
   const elInputPlaceholder = placeholder;
+  const isRequire = ref(false);
   const template = defineComponent({
-    setup() {
+    props: ["validators"],
+    setup(props) {
+      let validators = props.validators;
       return () => (
-        <el-input
-          placeholder={elInputPlaceholder}
-          value={elInputValue.value}
-          on-input={(value) => {
-            elInputValue.value = value;
-          }}
-        ></el-input>
+        <div class={style.formContainer}>
+          <el-input
+            placeholder={elInputPlaceholder}
+            value={elInputValue.value}
+            on-input={(value) => {
+              elInputValue.value = value;
+            }}
+            on-blur={() => {
+              if (validators && validators.required) {
+                console.log(validators.required);
+                elInputValue.value == ""
+                  ? (isRequire.value = true)
+                  : (isRequire.value = false);
+              }
+            }}
+            class={isRequire.value ? style.formValidator : ""}
+          ></el-input>
+          <div class={style.formErrorMessage}>
+            {isRequire.value && validators.message}
+          </div>
+        </div>
       );
     },
   });
   const getValue = () => {
     return elInputValue.value;
   };
+  const setValue = (value) => {
+    elInputValue.value = value;
+  };
   return {
     getValue,
+    setValue,
     template,
   };
 };
@@ -90,7 +165,25 @@ export const useElTable = ({
                 ></el-table-column>
               );
             })}
-            {elActionsColumns.map((item) => item.render && item.render())}
+            {elActionsColumns.map((item) => {
+              return item.render ? (
+                item.render()
+              ) : (
+                <el-table-column
+                  align="center"
+                  key={item.prop}
+                  prop={item.prop}
+                  label={item.label}
+                  {...{
+                    scopedSlots: {
+                      default: (scope) => {
+                        return item.scope({ scope });
+                      },
+                    },
+                  }}
+                ></el-table-column>
+              );
+            })}
           </el-table>
         );
       };
@@ -166,18 +259,20 @@ const useElPagination = ({ onCurrentPageChange: cChange = () => {} } = {}) => {
   const template = defineComponent({
     setup() {
       return () => (
-        <el-pagination
-          background
-          layout="prev, pager, next"
-          total={total.value}
-          on-current-change={currentChange}
-          currentPage={currentPage.value}
-          on={{
-            ["update:currentPage"]: (value) => {
-              currentPage.value = value;
-            },
-          }}
-        ></el-pagination>
+        <div class={style.elPagination}>
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            total={total.value}
+            on-current-change={currentChange}
+            currentPage={currentPage.value}
+            on={{
+              ["update:currentPage"]: (value) => {
+                currentPage.value = value;
+              },
+            }}
+          ></el-pagination>
+        </div>
       );
     },
   });
@@ -205,6 +300,7 @@ const useElSelect = ({
   const data = ref(elSelectData);
   const value = ref(elSelectValue);
   const getValue = () => value.value;
+  const setValue = (v) => (value.value = v);
   const loading = ref(false);
   const onInitialData = (event) => {
     loading.value = true;
@@ -237,6 +333,7 @@ const useElSelect = ({
     },
   });
   return {
+    setValue,
     getValue,
     onInitialData,
     template,
@@ -319,10 +416,12 @@ const useMyTable = ({
   currentPage: cPage = 1,
   pageSize = 10,
   onCurrentPageChange: cPageChange = () => {},
+  actionsColumns = [],
 } = {}) => {
   let elCurrentPage = cPage;
   const table = useElTable({
-    columns: columns,
+    columns,
+    actionsColumns,
   });
   const pagination = useElPagination({
     onCurrentPageChange: (currentPage) => {
@@ -369,6 +468,7 @@ const MyFormItemType = {
 const useMyForm = ({
   formItems = [],
   labelWidth = "80px",
+  splitColumnsCount = 2,
   okButtonText = "确定",
   okButtonClick = () => {},
   cancelButtonText = "取消",
@@ -384,6 +484,13 @@ const useMyForm = ({
     }
     return results;
   };
+  const initialFormData = (data) => {
+    if (data) {
+      components.forEach((item) => {
+        item.component.setValue(data[item.key]);
+      });
+    }
+  };
   const okButton = useElButton({
     type: ElButtonType.Primary,
     text: okButtonText,
@@ -397,43 +504,54 @@ const useMyForm = ({
     onClick: cancelButtonClick,
   });
   const template = (
-    <el-form label-width={labelWidth}>
-      {formItems &&
-        formItems.map((item) => {
-          if (item.type == MyFormItemType.Input) {
-            const input = useElInput({ placeholder: item.placeholder });
-            components.push({ key: item.key, component: input });
-            return (
-              <el-form-item label={item.label}>
-                <input.template />
-              </el-form-item>
-            );
-          } else if (item.type == MyFormItemType.Select) {
-            const select = useElSelect({
-              placeholder: item.placeholder,
-              data: item.data,
-            });
-            components.push({ key: item.key, component: select });
-            return (
-              <el-form-item label={item.label}>
-                <select.template />
-              </el-form-item>
-            );
-          } else {
-            return (
-              <el-form-item>
-                <div>{item.key}</div>
-              </el-form-item>
-            );
-          }
-        })}
-      <el-form-item>
-        <okButton.template />
-        <cancelButton.template />
-      </el-form-item>
-    </el-form>
+    <div class={style.myForm}>
+      <el-form label-width={labelWidth}>
+        {formItems &&
+          formItems.map((item) => {
+            if (item.type == MyFormItemType.Input) {
+              const input = useElInput({ placeholder: item.placeholder });
+              components.push({ key: item.key, component: input });
+              return (
+                <el-form-item
+                  label={item.label}
+                  style={{ width: `${100 / splitColumnsCount}%` }}
+                  rules={item.validators}
+                >
+                  <input.template validators={item.validators} />
+                </el-form-item>
+              );
+            } else if (item.type == MyFormItemType.Select) {
+              const select = useElSelect({
+                placeholder: item.placeholder,
+                data: item.data,
+              });
+              components.push({ key: item.key, component: select });
+              return (
+                <el-form-item
+                  label={item.label}
+                  style={{ width: `${100 / splitColumnsCount}%` }}
+                  rules={item.validators}
+                >
+                  <select.template />
+                </el-form-item>
+              );
+            } else {
+              return (
+                <div>
+                  <div>{item.key}</div>
+                </div>
+              );
+            }
+          })}
+        <div class={style.myFormButtons}>
+          <okButton.template />
+          <cancelButton.template />
+        </div>
+      </el-form>
+    </div>
   );
   return {
+    initialFormData,
     getFormData,
     template: defineComponent({
       setup() {
@@ -479,7 +597,21 @@ class PersonService {
 
 export default defineComponent({
   setup() {
-    const dialog = useElDialog({ title: "表单", width: "50%" });
+    const editButton = useElButton({
+      type: ElButtonType.Info,
+      text: "编辑",
+      onClick: () => {
+        console.log("edit");
+      },
+    });
+    const deleteButton = useElButton({
+      type: ElButtonType.Danger,
+      text: "删除",
+      onClick: () => {
+        console.log("delete");
+      },
+    });
+    const dialog = useElDialog({ title: "表单", width: "80%" });
     const personService = new PersonService();
     const card = useElCard();
     const myTable = useMyTable({
@@ -488,6 +620,27 @@ export default defineComponent({
         { label: "年龄", prop: "age" },
         { label: "性别", prop: "sex" },
         { label: "住址", prop: "address" },
+      ],
+      actionsColumns: [
+        {
+          scope: ({ scope }) => {
+            return (
+              <div>
+                <editButton.template
+                  click={() => {
+                    myForm.initialFormData(scope.row);
+                    dialog.toggleElDialogVisible();
+                  }}
+                />
+                <deleteButton.template
+                  click={() => {
+                    MyMessage.confirm("确认删除这条数据么", () => {});
+                  }}
+                />
+              </div>
+            );
+          },
+        },
       ],
       onCurrentPageChange: () => {
         loadingData();
@@ -555,12 +708,17 @@ export default defineComponent({
       },
     });
     const myForm = useMyForm({
+      splitColumnsCount: 2,
       formItems: [
         {
           key: "name",
           label: "姓名",
           placeholder: "请输入姓名",
           type: MyFormItemType.Input,
+          validators: {
+            required: true,
+            message: "请输入活动名称",
+          },
         },
         {
           key: "age",
