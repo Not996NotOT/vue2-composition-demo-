@@ -3,6 +3,7 @@ import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
 import style from "./Common.module.scss";
 import { List } from "linqts";
 import { Message, MessageBox, Notification } from "element-ui";
+import dayjs from "dayjs";
 
 const MyMessageEnum = {
   Error: "error",
@@ -54,6 +55,34 @@ class MyMessage {
     });
   }
 }
+
+const ElDatePickerType = {
+  Date: "date",
+};
+
+export const useElDatePicker = ({
+  placeholder: ph = "选择日期",
+  type = ElDatePickerType.Date,
+  value: v = dayjs(),
+} = {}) => {
+  const value = ref(v);
+  return {
+    template: defineComponent({
+      setup() {
+        return (
+          <el-date-picker
+            value={value}
+            on-input={(v) => {
+              value.value = value;
+            }}
+            type={type}
+            placeholder={ph}
+          ></el-date-picker>
+        );
+      },
+    }),
+  };
+};
 
 const ElButtonType = {
   Text: "text",
@@ -606,7 +635,11 @@ class PersonService {
             console.log(list);
           }
         });
-        let pagelist = list.Skip((currentPage - 1) * pageSize).Take(pageSize);
+        let pagelist = list
+          .OrderByDescending((item) => item.id)
+          .Skip((currentPage - 1) * pageSize)
+          .Take(pageSize);
+
         resovle({
           list: pagelist.ToArray(),
           total: list.Count(),
@@ -633,6 +666,17 @@ class PersonService {
             entity[item] = data[item];
           });
         }
+        resovle(true);
+      }, 1000);
+    });
+  }
+
+  async add({ data }) {
+    return new Promise((resovle) => {
+      setTimeout(() => {
+        data.id = Math.random();
+        personList.Add(data);
+        console.log(data);
         resovle(true);
       }, 1000);
     });
@@ -774,6 +818,15 @@ export default defineComponent({
             myTable.toggleTableLoading();
             if (await personService.update({ data: formData })) {
               MyMessage.showMessage("更新成功", MyMessageEnum.Success);
+              myTable.toggleTableLoading();
+            }
+          });
+        } else {
+          MyMessage.confirm("确认添加这条数据么", async () => {
+            dialog.toggleElDialogVisible();
+            myTable.toggleTableLoading();
+            if (await personService.add({ data: formData })) {
+              MyMessage.showMessage("添加成功", MyMessageEnum.Success);
               myTable.toggleTableLoading();
             }
           });
