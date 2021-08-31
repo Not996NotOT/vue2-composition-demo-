@@ -63,20 +63,60 @@ const ElDatePickerType = {
 export const useElDatePicker = ({
   placeholder: ph = "选择日期",
   type = ElDatePickerType.Date,
-  value: v = dayjs(),
+  value: paramV = dayjs().format("YYYY-MM-DD"),
 } = {}) => {
-  const value = ref(v);
+  const value = ref(paramV);
+  const getValue = () => value.value;
+  const setValue = (v) =>
+    (value.value = v == "" ? dayjs().format("YYYY-MM-DD") : v);
+  const returnTemplate = () => {
+    return (
+      <div>
+        <el-date-picker
+          class={style.myElDatePicker}
+          value={value.value}
+          on-input={(v) => {
+            value.value = v;
+          }}
+          type={type}
+          placeholder={ph}
+        ></el-date-picker>
+      </div>
+    );
+  };
   return {
+    setValue,
+    getValue,
+    template: defineComponent({
+      setup() {
+        return () => h("div", {}, [returnTemplate()]);
+      },
+    }),
+  };
+};
+
+const useElDatePickerRange = ({
+  rangeSeparator = "至",
+  startPlaceholder = "开始日期",
+  endPlaceholder = "结束日期",
+  value: v = new Date().toUTCString(),
+} = {}) => {
+  console.log(dayjs());
+  const value = ref(v);
+  const getValue = () => value.value;
+  const setValue = (v = value.value = v);
+  return {
+    setValue,
+    getValue,
     template: defineComponent({
       setup() {
         return (
           <el-date-picker
-            value={value}
-            on-input={(v) => {
-              value.value = value;
-            }}
-            type={type}
-            placeholder={ph}
+            v-model={value}
+            type="daterange"
+            range-separator={rangeSeparator}
+            start-placeholder={startPlaceholder}
+            end-placeholder={endPlaceholder}
           ></el-date-picker>
         );
       },
@@ -499,6 +539,8 @@ const MyFormItemType = {
   Input: Symbol("Input"),
   Select: Symbol("Select"),
   TextArea: Symbol("TextArea"),
+  DatePicker: Symbol("DatePicker"),
+  DatePickerRange: Symbol("DatePickerRange"),
 };
 
 const useMyForm = ({
@@ -548,7 +590,9 @@ const useMyForm = ({
   const clearFormData = () => {
     components.forEach((item) => {
       item.component.setValue("");
-      item.component.resetValidator();
+      if (item.component.resetValidator) {
+        item.component.resetValidator();
+      }
     });
   };
   const template = (
@@ -581,6 +625,32 @@ const useMyForm = ({
                   rules={item.validators}
                 >
                   <select.template />
+                </el-form-item>
+              );
+            } else if (item.type == MyFormItemType.DatePicker) {
+              const datePicker = useElDatePicker({
+                placeholder: item.placeholder,
+              });
+              components.push({ key: item.key, component: datePicker });
+              return (
+                <el-form-item
+                  label={item.label}
+                  style={{ width: `${100 / splitColumnsCount}%` }}
+                >
+                  <datePicker.template />
+                </el-form-item>
+              );
+            } else if (item.type == MyFormItemType.DatePickerRange) {
+              const datePickerRange = useElDatePickerRange({
+                placeholder: item.placeholder,
+              });
+              return (
+                <el-form-item
+                  label={item.label}
+                  style={{ width: `${100 / splitColumnsCount}%` }}
+                  rules={item.validators}
+                >
+                  <datePickerRange.template />
                 </el-form-item>
               );
             } else {
@@ -810,6 +880,11 @@ export default defineComponent({
           placeholder: "请输入地址",
           type: MyFormItemType.Input,
         },
+        {
+          key: "createtime",
+          label: "创建时间",
+          type: MyFormItemType.DatePicker,
+        },
       ],
       okButtonClick: ({ formData }) => {
         if (formData.id !== undefined) {
@@ -902,8 +977,10 @@ export default defineComponent({
     onMounted(() => {
       loadingData();
     });
+    
     return () => (
       <div>
+        <dp.template />
         <card.template>
           <template slot="title">
             <mySearch.template />
