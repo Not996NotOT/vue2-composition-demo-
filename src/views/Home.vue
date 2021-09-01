@@ -78,6 +78,7 @@ export const useElDatePicker = ({
           on-input={(v) => {
             value.value = v;
           }}
+          value-format="yyyy-MM-dd"
           type={type}
           placeholder={ph}
         ></el-date-picker>
@@ -690,6 +691,7 @@ class PersonService {
         sex: i % 2 == 0 ? "女" : "男",
         age: i.toString(),
         address: `地址${i}`,
+        createtime: `2019-02-03`,
       });
     }
   }
@@ -726,6 +728,7 @@ class PersonService {
     });
   }
   async update({ data }) {
+    console.log("update", data);
     return new Promise((resovle) => {
       setTimeout(() => {
         let entity = personList
@@ -788,6 +791,7 @@ export default defineComponent({
         { label: "年龄", prop: "age" },
         { label: "性别", prop: "sex" },
         { label: "住址", prop: "address" },
+        { label: "创建时间", prop: "createtime" },
       ],
       actionsColumns: [
         {
@@ -828,6 +832,11 @@ export default defineComponent({
       onCurrentPageChange: () => {
         loadingData();
       },
+    });
+    const refreshButton = useElButton({
+      type: ElButtonType.Info,
+      text: "刷新",
+      onClick: () => loadingData(),
     });
     const myForm = useMyForm({
       okButtonText: "保存",
@@ -977,16 +986,16 @@ export default defineComponent({
     onMounted(() => {
       loadingData();
     });
-    
+
     return () => (
       <div>
-        <dp.template />
         <card.template>
           <template slot="title">
             <mySearch.template />
           </template>
           <template slot="actions">
             <actionButton.template />
+            <refreshButton.template />
           </template>
           <myTable.template />
         </card.template>
