@@ -1,4 +1,8 @@
 <script>
+/**
+ * @version 0.0.1
+ * @author zhangxing
+ */
 import { h, ref, defineComponent, onMounted } from "@vue/composition-api";
 import style from "./Common.module.scss";
 import { List } from "linqts";
@@ -13,7 +17,7 @@ const MyMessageEnum = {
 
 class MyMessage {
   /**
-   * 弹出消息
+   * @description 弹出消息
    * @param {string} message 消息
    * @param {MyMessageEnum} MyMessageEnum
    */
@@ -22,9 +26,9 @@ class MyMessage {
   }
 
   /**
-   * 确认框
+   * @description 确认框
    * @param {string} message 消息
-   * @param {string} okEvent 成功回调事件
+   * @param {()=>void} okEvent 成功回调事件
    * @param {MyMessageEnum} myMessageEnum
    * @param {string} title 标题
    * @param {string} confirmButtonText 确定显示文字
@@ -47,6 +51,13 @@ class MyMessage {
       .catch(() => {});
   }
 
+  /**
+   * @description 右上角通知框
+   * @param {string} message - 提示的消息
+   * @param {string} title - 提示的标题
+   * @param {string} duration - 提示自动关闭的时间，0为手动关闭
+   */
+
   static notify(message, title = "提示", duration = "0") {
     Notification({
       title,
@@ -56,6 +67,9 @@ class MyMessage {
   }
 }
 
+/**
+ * @description element日期控件类型
+ */
 const ElDatePickerType = {
   Date: "date",
 };
@@ -130,18 +144,35 @@ const ElButtonType = {
   Primary: "primary",
   Danger: "danger",
   Info: "into",
+  Success: "success",
 };
-
+const ElButtonIconType = {
+  Unset: "",
+  Add: "el-icon-add",
+  Edit: "el-icon-edit",
+  Delete: "el-icon-delete",
+};
+const ElButtonSize = {
+  Default: "",
+  Small: "small",
+};
 export const useElButton = ({
   text = "",
   type = ElButtonType.Primary,
+  icon = ElButtonIconType.Unset,
+  size = ElButtonSize.Default,
   onClick = () => {},
 } = {}) => {
   const template = defineComponent({
     props: ["click"],
     setup(props, ctx) {
       return () => (
-        <el-button on-click={props.click ? props.click : onClick} type={type}>
+        <el-button
+          on-click={props.click ? props.click : onClick}
+          icon={icon}
+          type={type}
+          size={size}
+        >
           {ctx.slots.default ? ctx.slots.default() : text}
         </el-button>
       );
@@ -761,13 +792,17 @@ export default defineComponent({
     const editButton = useElButton({
       type: ElButtonType.Info,
       text: "编辑",
+      size: ElButtonSize.Small,
+      icon: ElButtonIconType.Edit,
       onClick: () => {
         console.log("edit");
       },
     });
     const deleteButton = useElButton({
-      type: ElButtonType.Danger,
       text: "删除",
+      type: ElButtonType.Danger,
+      icon: ElButtonIconType.Delete,
+      size: ElButtonSize.Small,
       onClick: () => {
         console.log("delete");
       },
